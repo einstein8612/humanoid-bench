@@ -74,24 +74,26 @@ class Powerlift(Task):
             value_at_margin=0,
         )
         stand_reward = standing * upright
-        small_control = rewards.tolerance(
-            self.robot.actuator_forces(),
-            margin=10,
-            value_at_margin=0,
-            sigmoid="quadratic",
-        ).mean()
-        small_control = (4 + small_control) / 5
+        # small_control = rewards.tolerance(
+        #     self.robot.actuator_forces(),
+        #     margin=10,
+        #     value_at_margin=0,
+        #     sigmoid="quadratic",
+        # ).mean()
+        # small_control = (4 + small_control) / 5
 
-        dumbbell_height = self._env.named.data.xpos["dumbbell", "z"]
-        reward_dumbbell_lifted = rewards.tolerance(
-            dumbbell_height, bounds=(1.9, 2.1), margin=2
-        )
+        # dumbbell_height = self._env.named.data.xpos["dumbbell", "z"]
+        # reward_dumbbell_lifted = rewards.tolerance(
+        #     dumbbell_height, bounds=(1.9, 2.1), margin=2
+        # )
+        
+        reward = stand_reward
 
-        reward = 0.2 * (small_control * stand_reward) + 0.8 * reward_dumbbell_lifted
+        # reward = 0.2 * (small_control * stand_reward) + 0.8 * reward_dumbbell_lifted
         return reward, {
             "stand_reward": stand_reward,
-            "small_control": small_control,
-            "reward_dumbbell_lifted": reward_dumbbell_lifted,
+            # "small_control": small_control,
+            # "reward_dumbbell_lifted": reward_dumbbell_lifted,
             "standing": standing,
             "upright": upright,
         }
