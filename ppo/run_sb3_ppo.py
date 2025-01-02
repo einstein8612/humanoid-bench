@@ -1,6 +1,6 @@
 import argparse
 
-from stable_baselines3 import PPO
+from stable_baselines3 import SAC
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecVideoRecorder
@@ -23,8 +23,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--env_name", type=str)
 parser.add_argument("--seed", type=int)
 parser.add_argument("--num_envs", default=4, type=int)
-parser.add_argument("--learning_rate", default=3e-5, type=float)
-parser.add_argument("--max_steps", default=20000000, type=int)
+parser.add_argument("--learning_rate", default=3e-4, type=float)
+parser.add_argument("--max_steps", default=10000000, type=int)
 parser.add_argument("--wandb_entity", default="robot-learning", type=str)
 ARGS = parser.parse_args()
 
@@ -170,8 +170,8 @@ def main(argv):
         save_code=True,  # optional
     )
     
-    model = PPO("MlpPolicy", env, verbose=1, tensorboard_log=f"runs/{run.id}", learning_rate=float(ARGS.learning_rate), batch_size=512, device="cpu")
-    model.learn(total_timesteps=ARGS.max_steps, log_interval=1, callback=[WandbCallback(model_save_path=f"models/{run.id}",verbose=2), EvalCallback(), LogCallback(info_keywords=[]), EpisodeLogCallback()])
+    model = SAC("MlpPolicy", env, verbose=1, tensorboard_log=f"runs/{run.id}", learning_rate=float(ARGS.learning_rate), batch_size=256)
+    model.learn(progress_bar=True, total_timesteps=ARGS.max_steps, log_interval=1, callback=[WandbCallback(model_save_path=f"models/{run.id}",verbose=2), EvalCallback(), LogCallback(info_keywords=[]), EpisodeLogCallback()])
     
     
     model.save("ppo")

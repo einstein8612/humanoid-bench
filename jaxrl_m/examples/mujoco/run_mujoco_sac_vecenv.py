@@ -82,15 +82,16 @@ def main(_):
     kwargs = {}
     if FLAGS.env_name == 'h1hand-package-v0':
         kwargs = {'policy_path': None}
-    env = EpisodeMonitor(gym.make(FLAGS.env_name, **kwargs))
+    
+    env = gym.make_vec(FLAGS.env_name, num_envs=2, vectorization_mode="sync")
     eval_env = EpisodeMonitor(gym.make(FLAGS.env_name, **kwargs))
 
     example_transition = dict(
-        observations=env.observation_space.sample(),
-        actions=env.action_space.sample(),
+        observations=env.single_observation_space.sample(),
+        actions=env.single_action_space.sample(),
         rewards=0.0,
         masks=1.0,
-        next_observations=env.observation_space.sample(),
+        next_observations=env.single_observation_space.sample(),
     )
 
     replay_buffer = ReplayBuffer.create(example_transition, size=int(1e6))
@@ -103,6 +104,7 @@ def main(_):
 
     exploration_metrics = dict()
     obs, _ = env.reset()
+    
     exploration_rng = jax.random.PRNGKey(0)
 
     for i in tqdm.tqdm(range(1, FLAGS.max_steps + 1),
@@ -110,25 +112,27 @@ def main(_):
                        dynamic_ncols=True):
 
         if i < FLAGS.start_steps:
-            action = env.action_space.sample()
+            actions = env.action_space.sample()
         else:
             exploration_rng, key = jax.random.split(exploration_rng)
-            action = agent.sample_actions(obs, seed=key)
+            actions = agent.sample_actions(obs, seed=key)
 
         # print(action)
-        next_obs, reward, terminated, truncated, info = env.step(action)
+        next_obs, rewards, terminated, truncated, info = env.step(actions)
 
-        done = terminated or truncated
-        mask = float(not terminated or truncated)
+        done = np.all(np.logical_or(terminated, truncated))
+        mask = np.logical_or(np.logical_not(terminated), truncated).astype(float)
         # mask = float(not done or 'TimeLimit.truncated' in info)
+        
+        for env_idx in range(2):
+            replay_buffer.add_transition(dict(
+                observations=obs[env_idx],
+                actions=actions[env_idx],
+                rewards=rewards[env_idx],
+                masks=mask[env_idx],
+                next_observations=next_obs[env_idx],
+            ))
 
-        replay_buffer.add_transition(dict(
-            observations=obs,
-            actions=action,
-            rewards=reward,
-            masks=mask,
-            next_observations=next_obs,
-        ))
         obs = next_obs
 
         if done:
