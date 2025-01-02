@@ -120,4 +120,4 @@ class Powerlift(Task):
 
     # If pelvis too low then abort
     def get_terminated(self):
-        return self.get_pelvis_height() < 0.1, {}
+        return self.get_pelvis_height() < 0.2, {}
