@@ -53,6 +53,7 @@ class Powerlift(Task):
             _STAND_HEIGHT = 1.28
             
         self.prev_torso_rotation = np.array([1, 0, 0, 0]) # Default pose
+        self.foot = 0
 
     @property
     def observation_space(self):
@@ -72,7 +73,7 @@ class Powerlift(Task):
             np.dot(cur_torso_rotation, self.prev_torso_rotation),
             bounds=(0.95, 1),
             sigmoid="linear",
-            margin=0.5,
+            margin=0.95,
             value_at_margin=0,
         )
         self.prev_torso_rotation = cur_torso_rotation
@@ -106,7 +107,16 @@ class Powerlift(Task):
         ).mean()
         small_control = (4 + small_control) / 5
         
-        reward = 0.6 * stand_reward + 0.2 * no_rotation + 0.2 * small_control
+        # Reward for feet staying near the ground
+        foot = rewards.tolerance(
+            np.array([self._env.named.data.xpos["left_ankle_link", "z"], self._env.named.data.xpos["right_ankle_link", "z"]]),
+            margin=0.1,
+            bounds=(0, 0.2),
+            value_at_margin=0,
+            sigmoid="quadratic",
+        ).min()
+        
+        reward = 0.3 * stand_reward + 0.3 * foot + 0.2 * no_rotation + 0.2 * small_control
 
         # reward = 0.2 * (small_control * stand_reward) + 0.8 * reward_dumbbell_lifted
         return reward, {
@@ -120,4 +130,4 @@ class Powerlift(Task):
 
     # If pelvis too low then abort
     def get_terminated(self):
-        return self.get_pelvis_height() < 0.2, {}
+        return self._env.data.qpos[2] < 0.2 or self.get_pelvis_height() < 0.2, {}
