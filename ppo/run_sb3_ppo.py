@@ -73,7 +73,7 @@ class EvalCallback(BaseCallback):
         video = []
 
         obs = self.eval_env.reset()
-        for i in range(1000):
+        for i in range(500):
             action = self.model.predict(obs, deterministic=True)[0]
             obs, _, _, _ = self.eval_env.step(action)
             pixels = self.eval_env.render().transpose(2,0,1)
@@ -81,6 +81,7 @@ class EvalCallback(BaseCallback):
 
         video = np.stack(video)
         wandb.log({"results/video": wandb.Video(video, fps=100, format="gif")})
+        print("done recording video")
 
 
 class LogCallback(BaseCallback):
@@ -170,8 +171,8 @@ def main(argv):
         save_code=True,  # optional
     )
     
-    model = SAC("MlpPolicy", env, verbose=1, tensorboard_log=f"runs/{run.id}", learning_rate=float(ARGS.learning_rate), batch_size=256)
-    model.learn(progress_bar=True, total_timesteps=ARGS.max_steps, log_interval=1, callback=[WandbCallback(model_save_path=f"models/{run.id}",verbose=2), EvalCallback(), LogCallback(info_keywords=[]), EpisodeLogCallback()])
+    model = SAC("MlpPolicy", env, verbose=0, tensorboard_log=f"runs/{run.id}", learning_rate=float(ARGS.learning_rate), batch_size=256)
+    model.learn(progress_bar=True, total_timesteps=ARGS.max_steps, log_interval=1, callback=[WandbCallback(model_save_path=f"models/{run.id}",verbose=2), EvalCallback(250000), LogCallback(info_keywords=[]), EpisodeLogCallback()])
     
     
     model.save("ppo")
