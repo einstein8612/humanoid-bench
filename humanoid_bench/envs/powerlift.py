@@ -1,5 +1,6 @@
 import os
 
+import mujoco._structs
 import numpy as np
 import mujoco
 import gymnasium as gym
@@ -50,6 +51,8 @@ class Powerlift(Task):
         if robot.__class__.__name__ == "G1":
             global _STAND_HEIGHT
             _STAND_HEIGHT = 1.28
+            
+        self.prev_torso_rotation = np.array([1, 0, 0, 0]) # Default pose
 
     @property
     def observation_space(self):
@@ -59,8 +62,24 @@ class Powerlift(Task):
             shape=(self.robot.dof * 2 - 1 + self.dof * 2 - 1,),
             dtype=np.float64,
         )
+        
+    def get_pelvis_height(self):
+        return self._env.named.data.xpos["pelvis", "z"]
+
+    def get_rotation_reward(self):
+        cur_torso_rotation = self._env.named.data.xquat["torso_link"]
+        r = rewards.tolerance(
+            np.dot(cur_torso_rotation, self.prev_torso_rotation),
+            bounds=(0.95, 1),
+            sigmoid="linear",
+            margin=0.5,
+            value_at_margin=0,
+        )
+        self.prev_torso_rotation = cur_torso_rotation
+        return r
 
     def get_reward(self):
+        # Reward standing
         standing = rewards.tolerance(
             self.robot.head_height(),
             bounds=(_STAND_HEIGHT, float("inf")),
@@ -74,29 +93,30 @@ class Powerlift(Task):
             value_at_margin=0,
         )
         stand_reward = standing * upright
-        # small_control = rewards.tolerance(
-        #     self.robot.actuator_forces(),
-        #     margin=10,
-        #     value_at_margin=0,
-        #     sigmoid="quadratic",
-        # ).mean()
-        # small_control = (4 + small_control) / 5
 
-        # dumbbell_height = self._env.named.data.xpos["dumbbell", "z"]
-        # reward_dumbbell_lifted = rewards.tolerance(
-        #     dumbbell_height, bounds=(1.9, 2.1), margin=2
-        # )
+        # Reward not rotating
+        no_rotation = self.get_rotation_reward()
+
+        # Reward small control for smooth motions
+        small_control = rewards.tolerance(
+            self.robot.actuator_forces(),
+            margin=10,
+            value_at_margin=0,
+            sigmoid="quadratic",
+        ).mean()
+        small_control = (4 + small_control) / 5
         
-        reward = stand_reward
+        reward = 0.6 * stand_reward + 0.2 * no_rotation + 0.2 * small_control
 
         # reward = 0.2 * (small_control * stand_reward) + 0.8 * reward_dumbbell_lifted
         return reward, {
             "stand_reward": stand_reward,
-            # "small_control": small_control,
+            "small_control": small_control,
             # "reward_dumbbell_lifted": reward_dumbbell_lifted,
             "standing": standing,
             "upright": upright,
         }
 
+    # If pelvis too low then abort
     def get_terminated(self):
-        return self._env.data.qpos[2] < 0.2, {}
+        return self.get_pelvis_height() < 0.1, {}
