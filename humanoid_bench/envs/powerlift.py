@@ -105,7 +105,7 @@ class Powerlift(Task):
             value_at_margin=0,
             sigmoid="quadratic",
         ).mean()
-        small_control = (4 + small_control) / 5
+        # small_control = (4 + small_control) / 5
         
         # Reward for feet staying near the ground
         foot = rewards.tolerance(
@@ -123,6 +123,7 @@ class Powerlift(Task):
             "stand_reward": stand_reward,
             "small_control": small_control,
             "no_rotation": no_rotation,
+            "foot": foot,
             # "reward_dumbbell_lifted": reward_dumbbell_lifted,
             "standing": standing,
             "upright": upright,
