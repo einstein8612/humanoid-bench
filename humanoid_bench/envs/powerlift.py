@@ -112,6 +112,7 @@ class Powerlift(Task):
         return reward, {
             "stand_reward": stand_reward,
             "small_control": small_control,
+            "no_rotation": no_rotation,
             # "reward_dumbbell_lifted": reward_dumbbell_lifted,
             "standing": standing,
             "upright": upright,
