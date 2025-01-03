@@ -54,7 +54,7 @@ class Powerlift(Task):
             
         self.prev_torso_rotation = np.array([1, 0, 0, 0]) # Default pose
         
-        self.terminate_on_collision = ["torso", "pelvis", "hip"] # Torso and head are fused together
+        self.terminate_on_collision = ["torso", "pelvis", "hip", "elbow", "knee"] # Torso and head are fused together
 
     @property
     def observation_space(self):
@@ -108,8 +108,9 @@ class Powerlift(Task):
         # Reward standing
         standing = rewards.tolerance(
             self.robot.head_height(),
-            bounds=(_STAND_HEIGHT, float("inf")),
+            bounds=(_STAND_HEIGHT, _STAND_HEIGHT),
             margin=_STAND_HEIGHT / 3,
+            value_at_margin=0
         )
         upright = rewards.tolerance(
             self.robot.torso_upright(),
@@ -179,7 +180,7 @@ class Powerlift(Task):
                 geoms_on_floor.append(geom2)
         
         for geom in self.terminate_on_collision:
-            if geom in geoms_on_floor:
+            if any(geom in floor_geom for floor_geom in geoms_on_floor):
                 return True
             
         return False
