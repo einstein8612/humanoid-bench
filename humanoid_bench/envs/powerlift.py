@@ -53,7 +53,6 @@ class Powerlift(Task):
             _STAND_HEIGHT = 1.28
             
         self.prev_torso_rotation = np.array([1, 0, 0, 0]) # Default pose
-        self.foot = 0
         
         self.terminate_on_collision = ["torso", "pelvis", "hip"] # Torso and head are fused together
 
@@ -135,12 +134,12 @@ class Powerlift(Task):
         
         # Reward for feet staying near the ground
         foot = rewards.tolerance(
-            np.array([self._env.named.data.xpos["left_ankle_link", "z"], self._env.named.data.xpos["right_ankle_link", "z"]]),
-            margin=0.1,
-            bounds=(0, 0.2),
+            np.array([self._env.named.data.sensordata["left_foot_sensor"][0], self._env.named.data.sensordata["right_foot_sensor"][0]]),
+            bounds=(80, 250),
+            margin=250,
             value_at_margin=0,
             sigmoid="quadratic",
-        ).min()
+        ).mean()
         
         # Reward for slow joints
         slow_joints = rewards.tolerance(
@@ -153,7 +152,7 @@ class Powerlift(Task):
         
         balance = self.get_balance_reward()
         
-        reward = 0.3 * stand_reward + 0.2 * slow_joints + 0.2 * balance + 0.1 * foot + 0.05 * no_rotation + 0.05 * small_control
+        reward = 0.3 * slow_joints + 0.2 * foot + 0.2 * stand_reward + 0.1 * balance + 0.05 * no_rotation + 0.05 * small_control
 
         # reward = 0.2 * (small_control * stand_reward) + 0.8 * reward_dumbbell_lifted
         return reward, {
@@ -176,7 +175,7 @@ class Powerlift(Task):
             geom2 = mujoco.mj_id2name(self._env.model, 5, contact.geom2)
             
             # Check if the contact is with the ground
-            if "floor" in geom1:
+            if geom1 == "floor" and geom2 is not None:
                 geoms_on_floor.append(geom2)
         
         for geom in self.terminate_on_collision:
