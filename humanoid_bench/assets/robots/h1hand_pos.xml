@@ -288,7 +288,8 @@
                                     diaginertia="0.00362 0.00355701 0.000149987"/>
                                 <joint name="left_ankle" axis="0 1 0" range="-0.87 0.52"/>
                                 <geom class="visual" mesh="left_ankle_link"/>
-                                <site name="left_foot" pos="0. 0 -0.05" rgba="0 1 0 1" size="0.001"/>
+                                <geom type="sphere" pos="-0.075 0 -0.069" rgba="0 1 0 1" size="0.001"/>
+                                <site name="left_foot" pos="-0.075 0 -0.07" rgba="0 1 0 1" size="0.001"/>
                                 <geom name="left_foot" class="collision" mesh="left_ankle_link"/>
                             </body>
                         </body>
@@ -324,7 +325,8 @@
                                     diaginertia="0.00362 0.00355701 0.000149987"/>
                                 <joint name="right_ankle" axis="0 1 0" range="-0.87 0.52"/>
                                 <geom class="visual" mesh="right_ankle_link"/>
-                                <site name="right_foot" pos="0. 0 -0.05" rgba="0 1 0 1" size="0.001"/>
+                                <geom type="sphere" pos="-0.075 0 -0.069" rgba="0 1 0 1" size="0.001"/>
+                                <site name="right_foot" pos="-0.075 0 -0.069" rgba="0 1 0 1" size="0.001"/>
                                 <geom name="right_foot" class="collision" mesh="right_ankle_link"/>
                             </body>
                         </body>
