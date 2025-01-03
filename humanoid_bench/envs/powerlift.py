@@ -53,8 +53,8 @@ class Powerlift(Task):
             _STAND_HEIGHT = 1.28
             
         self.prev_torso_rotation = np.array([1, 0, 0, 0]) # Default pose
-        
         self.terminate_on_collision = ["torso", "pelvis", "hip", "elbow", "knee"] # Torso and head are fused together
+        self.qpos0 = self._env.model.key_qpos[0].copy() # The actual default pose of the robot, there's always only one key_qpos
 
     @property
     def observation_space(self):
@@ -154,7 +154,15 @@ class Powerlift(Task):
         
         balance = self.get_balance_reward()
         
-        reward = slow_joints * (0.4 * foot + 0.3 * stand_reward + 0.1 * balance + 0.1 * no_rotation + 0.1 * small_control)
+        ref_reward = rewards.tolerance(
+            np.linalg.norm(self.qpos0 - self._env.data.qpos),
+            bounds=(0, 0.5),
+            margin=5,
+            value_at_margin=0,
+            sigmoid="quadratic",
+        )
+        
+        reward = slow_joints * (0.4 * foot + 0.2 * stand_reward + 0.1 * ref_reward + 0.1 * balance + 0.1 * no_rotation + 0.1 * small_control)
 
         # reward = 0.2 * (small_control * stand_reward) + 0.8 * reward_dumbbell_lifted
         return reward, {
@@ -164,6 +172,7 @@ class Powerlift(Task):
             "foot": foot,
             "slow_joints": slow_joints,
             "balance": balance,
+            "ref": ref_reward,
             # "reward_dumbbell_lifted": reward_dumbbell_lifted,
             "standing": standing,
             "upright": upright,
