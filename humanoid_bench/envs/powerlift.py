@@ -54,7 +54,7 @@ class Powerlift(Task):
             
         self.prev_torso_rotation = np.array([1, 0, 0, 0]) # Default pose
         self.terminate_on_collision = ["torso", "pelvis", "hip", "elbow", "knee"] # Torso and head are fused together
-        self.qpos0 = self._env.model.key_qpos[0].copy() # The actual default pose of the robot, there's always only one key_qpos
+        self.qpos0 = robot._env.model.key_qpos[0].copy() # The actual default pose of the robot, there's always only one key_qpos
 
     @property
     def observation_space(self):
