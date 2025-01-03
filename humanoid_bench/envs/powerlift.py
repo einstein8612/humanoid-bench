@@ -54,6 +54,8 @@ class Powerlift(Task):
             
         self.prev_torso_rotation = np.array([1, 0, 0, 0]) # Default pose
         self.foot = 0
+        
+        self.terminate_on_collision = ["torso", "pelvis", "hip"] # Torso and head are fused together
 
     @property
     def observation_space(self):
@@ -81,7 +83,7 @@ class Powerlift(Task):
 
     def get_balance_reward(self):
         # Calculate the robot's center of mass in the horizontal plane (x, y)
-        com_xy = self.robot.center_of_mass()[:2]
+        com_xy = self.robot.center_of_mass_position()[:2]
 
         # Calculate the midpoint between the robot's feet (support polygon center)
         feet_midpoint = (
@@ -165,7 +167,24 @@ class Powerlift(Task):
             "standing": standing,
             "upright": upright,
         }
+        
+    def check_blacklisted_geoms(self):
+        geoms_on_floor = []
+        for contact in self._env.data.contact:
+            # Get the names of the bodies involved in the contact
+            geom1 = mujoco.mj_id2name(self._env.model, 5, contact.geom1)
+            geom2 = mujoco.mj_id2name(self._env.model, 5, contact.geom2)
+            
+            # Check if the contact is with the ground
+            if "floor" in geom1:
+                geoms_on_floor.append(geom2)
+        
+        for geom in self.terminate_on_collision:
+            if geom in geoms_on_floor:
+                return True
+            
+        return False
 
     # If pelvis too low then abort
     def get_terminated(self):
-        return self._env.data.qpos[2] < 0.2 or self.get_pelvis_height() < 0.2, {}
+        return self._env.data.qpos[2] < 0.2 or self.get_pelvis_height() < 0.2 or self.check_blacklisted_geoms(), {}
