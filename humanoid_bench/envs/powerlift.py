@@ -137,7 +137,7 @@ class Powerlift(Task):
         # Reward for feet staying near the ground
         foot = rewards.tolerance(
             np.array([self._env.named.data.sensordata["left_foot_sensor"][0], self._env.named.data.sensordata["right_foot_sensor"][0]]),
-            bounds=(80, 250),
+            bounds=(40, 250),
             margin=250,
             value_at_margin=0,
             sigmoid="quadratic",
@@ -147,14 +147,14 @@ class Powerlift(Task):
         slow_joints = rewards.tolerance(
             self.robot.joint_velocities(),
             margin=1,
-            bounds=(0, 1),
+            bounds=(-1, 1),
             value_at_margin=0,
             sigmoid="quadratic",
         ).mean()
         
         balance = self.get_balance_reward()
         
-        reward = 0.3 * slow_joints + 0.2 * foot + 0.2 * stand_reward + 0.1 * balance + 0.05 * no_rotation + 0.05 * small_control
+        reward = slow_joints * (0.4 * foot + 0.3 * stand_reward + 0.1 * balance + 0.1 * no_rotation + 0.1 * small_control)
 
         # reward = 0.2 * (small_control * stand_reward) + 0.8 * reward_dumbbell_lifted
         return reward, {
