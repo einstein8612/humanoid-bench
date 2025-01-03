@@ -116,7 +116,16 @@ class Powerlift(Task):
             sigmoid="quadratic",
         ).min()
         
-        reward = 0.3 * stand_reward + 0.3 * foot + 0.2 * no_rotation + 0.2 * small_control
+        # Reward for slow joints
+        slow_joints = rewards.tolerance(
+            self.robot.joint_velocities(),
+            margin=1,
+            bounds=(0, 1),
+            value_at_margin=0,
+            sigmoid="quadratic",
+        ).mean()
+        
+        reward = 0.4 * slow_joints + 0.15 * stand_reward + 0.15 * foot + 0.15 * no_rotation + 0.15 * small_control
 
         # reward = 0.2 * (small_control * stand_reward) + 0.8 * reward_dumbbell_lifted
         return reward, {
@@ -124,6 +133,7 @@ class Powerlift(Task):
             "small_control": small_control,
             "no_rotation": no_rotation,
             "foot": foot,
+            "slow_joints": slow_joints,
             # "reward_dumbbell_lifted": reward_dumbbell_lifted,
             "standing": standing,
             "upright": upright,
