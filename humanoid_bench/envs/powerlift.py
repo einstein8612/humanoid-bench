@@ -109,6 +109,7 @@ class Powerlift(Task):
         standing = rewards.tolerance(
             self.robot.head_height(),
             bounds=(_STAND_HEIGHT, _STAND_HEIGHT),
+            sigmoid="linear",
             margin=_STAND_HEIGHT / 3,
             value_at_margin=0
         )
