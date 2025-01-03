@@ -69,18 +69,6 @@ class Powerlift(Task):
     def get_pelvis_height(self):
         return self._env.named.data.xpos["pelvis", "z"]
 
-    def get_rotation_reward(self):
-        cur_torso_rotation = self._env.named.data.xquat["torso_link"]
-        r = rewards.tolerance(
-            np.dot(cur_torso_rotation, self.prev_torso_rotation),
-            bounds=(0.95, 1),
-            sigmoid="linear",
-            margin=0.95,
-            value_at_margin=0,
-        )
-        self.prev_torso_rotation = cur_torso_rotation
-        return r
-
     def get_balance_reward(self):
         # Calculate the robot's center of mass in the horizontal plane (x, y)
         com_xy = self.robot.center_of_mass_position()[:2]
@@ -111,7 +99,7 @@ class Powerlift(Task):
             self.robot.head_height(),
             bounds=(_STAND_HEIGHT, _STAND_HEIGHT),
             sigmoid="linear",
-            margin=_STAND_HEIGHT / 3,
+            margin=_STAND_HEIGHT / 4,
             value_at_margin=0
         )
         upright = rewards.tolerance(
@@ -122,9 +110,6 @@ class Powerlift(Task):
             value_at_margin=0,
         )
         stand_reward = standing * upright
-
-        # Reward not rotating
-        no_rotation = self.get_rotation_reward()
 
         # Reward small control for smooth motions
         small_control = rewards.tolerance(
@@ -139,11 +124,29 @@ class Powerlift(Task):
         foot = rewards.tolerance(
             np.array([self._env.named.data.sensordata["left_foot_sensor"][0], self._env.named.data.sensordata["right_foot_sensor"][0]]),
             bounds=(40, 250),
-            margin=250,
+            margin=100,
             value_at_margin=0,
             sigmoid="quadratic",
         ).mean()
         
+        # Reward for feet staying at certain distance
+        foot_space = rewards.tolerance(
+            np.linalg.norm(self._env.named.data.xpos["left_ankle_link", :2] - self._env.named.data.xpos["right_ankle_link", :2]),
+            bounds=(0.3, 0.7), # 50cm between feet
+            margin=0.1,
+            value_at_margin=0,
+            sigmoid="quadratic",
+        )
+        
+        # Reward for feet staying at certain height
+        foot_height = rewards.tolerance(
+            np.array([self._env.named.data.xpos["left_ankle_link", 2], self._env.named.data.xpos["right_ankle_link", 2]]),
+            bounds=(0.0, 0.1), # 50cm between feet
+            margin=0.05,
+            value_at_margin=0,
+            sigmoid="quadratic",
+        ).min()
+
         # Reward for slow joints
         slow_joints = rewards.tolerance(
             self.robot.joint_velocities(),
@@ -163,18 +166,18 @@ class Powerlift(Task):
             sigmoid="quadratic",
         )
 
-        reward = slow_joints * (0.3 * foot + 0.2 * stand_reward + 0.2 * ref_reward + 0.1 * balance + 0.1 * no_rotation + 0.1 * small_control)
+        reward = slow_joints * (0.2 * foot_height + 0.15 * foot + 0.2 * stand_reward + 0.2 * ref_reward + 0.05 * foot_space + 0.1 * balance + 0.1 * small_control)
 
-        # reward = 0.2 * (small_control * stand_reward) + 0.8 * reward_dumbbell_lifted
         return reward, {
             "stand_reward": stand_reward,
             "small_control": small_control,
-            "no_rotation": no_rotation,
+            "foot_space": foot_space,
+            "foot_height": foot_height,
             "foot": foot,
             "slow_joints": slow_joints,
             "balance": balance,
             "ref": ref_reward,
-            # "reward_dumbbell_lifted": reward_dumbbell_lifted,
+            # "reward_dumbbell_lifted": reward_hasdumbbell_lifted,
             "standing": standing,
             "upright": upright,
         }
