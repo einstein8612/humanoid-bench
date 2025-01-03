@@ -79,6 +79,30 @@ class Powerlift(Task):
         self.prev_torso_rotation = cur_torso_rotation
         return r
 
+    def get_balance_reward(self):
+        # Calculate the robot's center of mass in the horizontal plane (x, y)
+        com_xy = self.robot.center_of_mass()[:2]
+
+        # Calculate the midpoint between the robot's feet (support polygon center)
+        feet_midpoint = (
+            self._env.named.data.xpos["left_ankle_link", :2]
+            + self._env.named.data.xpos["right_ankle_link", :2]
+        ) / 2
+
+        # Compute the horizontal distance between CoM and the support polygon center
+        com_to_support_dist = np.linalg.norm(com_xy - feet_midpoint)
+
+        # Reward the robot for keeping its CoM close to the center of the support polygon
+        balance = rewards.tolerance(
+            com_to_support_dist,
+            bounds=(0, 0.05),  # Target: CoM stays within 5 cm of the support polygon center
+            margin=0.2,        # Allow up to 20 cm for a smoother gradient
+            value_at_margin=0, # Reward drops to 0 outside the margin
+            sigmoid="quadratic"
+        )
+        
+        return balance
+
     def get_reward(self):
         # Reward standing
         standing = rewards.tolerance(
@@ -125,7 +149,9 @@ class Powerlift(Task):
             sigmoid="quadratic",
         ).mean()
         
-        reward = 0.4 * slow_joints + 0.15 * stand_reward + 0.15 * foot + 0.15 * no_rotation + 0.15 * small_control
+        balance = self.get_balance_reward()
+        
+        reward = 0.3 * stand_reward + 0.2 * slow_joints + 0.2 * balance + 0.1 * foot + 0.05 * no_rotation + 0.05 * small_control
 
         # reward = 0.2 * (small_control * stand_reward) + 0.8 * reward_dumbbell_lifted
         return reward, {
@@ -134,6 +160,7 @@ class Powerlift(Task):
             "no_rotation": no_rotation,
             "foot": foot,
             "slow_joints": slow_joints,
+            "balance": balance,
             # "reward_dumbbell_lifted": reward_dumbbell_lifted,
             "standing": standing,
             "upright": upright,
